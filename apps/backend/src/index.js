@@ -342,6 +342,6 @@ app.post("/api/calculate", authMiddleware, async (req, res) => {
 });
 
 await ensureDataFiles();
-app.listen(PORT, () => {
-  console.log(`GreenClaw backend running on :${PORT}`);
-});
+
+// 导出 app，供 Vercel Serverless Function 使用
+export default app;
