@@ -21,6 +21,7 @@ let dataDir = path.join("/tmp", "data");
 let usersPath = path.join(dataDir, "users.json");
 let projectsPath = path.join(dataDir, "projects.json");
 let refreshTokensPath = path.join(dataDir, "refresh_tokens.json");
+let calculationJobsPath = path.join(dataDir, "calculation_jobs.json");
 
 app.use(
   cors({
@@ -37,6 +38,7 @@ async function ensureDataFiles() {
   usersPath = path.join(dataDir, "users.json");
   projectsPath = path.join(dataDir, "projects.json");
   refreshTokensPath = path.join(dataDir, "refresh_tokens.json");
+  calculationJobsPath = path.join(dataDir, "calculation_jobs.json");
 
   try {
     await mkdir(dataDir, { recursive: true });
@@ -50,7 +52,7 @@ async function ensureDataFiles() {
     }
   }
 
-  for (const filePath of [usersPath, projectsPath, refreshTokensPath]) {
+  for (const filePath of [usersPath, projectsPath, refreshTokensPath, calculationJobsPath]) {
     try {
       await readFile(filePath, "utf-8");
     } catch {
@@ -335,31 +337,76 @@ app.post("/api/calculate", authMiddleware, async (req, res) => {
       return res.status(404).json({ error: "project_not_found" });
     }
 
-    // 1. 调用 calculation 包进行真实计算
-    const { calculateProject } = await import("@greenclaw/calculation");
     const jobId = uuidv4();
 
-    // 异步触发计算（推荐用队列，但先用立即计算）
-    const result = await calculateProject(project);
-
-    // 2. 保存计算结果到项目
-    const idx = projects.findIndex((p) => p.id === projectId);
-    projects[idx].params = { ...projects[idx].params, ...result.params };
-    projects[idx].lastCalculatedAt = new Date().toISOString();
-    await writeJson(projectsPath, projects);
-
-    return res.json({
+    // 1. 创建任务记录（异步计算）
+    const calculationJobs = (await readJson(calculationJobsPath)) || [];
+    calculationJobs.push({
       jobId,
-      status: "completed",
-      message: "calculation_completed",
-      result
+      projectId,
+      userId: req.user.id,
+      status: "queued",
+      startedAt: new Date().toISOString(),
+      progress: 0
+    });
+    await writeJson(calculationJobsPath, calculationJobs);
+
+    // 2. 立即返回 jobId（不阻塞响应）
+    res.json({
+      jobId,
+      status: "queued",
+      message: "calculation_started",
+      projectId
+    });
+
+    // 3. 异步执行计算（不阻塞本次请求）
+    setImmediate(async () => {
+      try {
+        const { calculateProject } = await import("@greenclaw/calculation");
+        const result = await calculateProject(project);
+
+        // 更新任务状态为完成
+        const jobs = (await readJson(calculationJobsPath)) || [];
+        const job = jobs.find((j) => j.jobId === jobId);
+        if (job) {
+          job.status = "completed";
+          job.completedAt = new Date().toISOString();
+          job.result = result;
+          await writeJson(calculationJobsPath, jobs);
+        }
+
+        // 保存结果到项目
+        const latestProjects = await readJson(projectsPath);
+        const idx = latestProjects.findIndex((p) => p.id === projectId);
+        if (idx > -1) {
+          latestProjects[idx].params = { ...latestProjects[idx].params, ...result.params };
+          latestProjects[idx].lastCalculatedAt = new Date().toISOString();
+          await writeJson(projectsPath, latestProjects);
+        }
+      } catch (err) {
+        console.error("Calculation failed:", err);
+      }
     });
   } catch (error) {
     console.error("Calculate error:", error);
     return res.status(500).json({
-      error: "calculation_failed",
-      message: error?.message || "unknown_error"
+      error: "calculation_failed"
     });
+  }
+});
+
+// 查询计算任务状态（前端轮询使用）
+app.get("/api/calculate/status/:jobId", authMiddleware, async (req, res) => {
+  const { jobId } = req.params;
+  try {
+    const jobs = (await readJson(calculationJobsPath)) || [];
+    const job = jobs.find((j) => j.jobId === jobId);
+    if (!job) {
+      return res.status(404).json({ error: "job_not_found" });
+    }
+    res.json(job);
+  } catch {
+    res.status(500).json({ error: "failed_to_get_status" });
   }
 });
 

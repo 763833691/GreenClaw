@@ -1,11 +1,12 @@
 export async function calculateProject(project) {
-  console.log(`🚀 开始计算项目: ${project.name} (${project.id})`);
-  await new Promise((resolve) => setTimeout(resolve, 800));
+  console.log(`[Calculation] 开始处理项目 → ${project.name} (${project.id})`);
+  await new Promise((resolve) => setTimeout(resolve, 1200));
 
   return {
     params: {
       ...(project.params || {}),
-      calculated: true
+      calculated: true,
+      version: "1.0"
     },
     metrics: {
       energyConsumption: 12480,
@@ -13,10 +14,7 @@ export async function calculateProject(project) {
       costEstimate: 456000,
       score: 87
     },
-    recommendations: [
-      "建议增加自然通风设计，可降低能耗 12%",
-      "屋顶光伏覆盖率提升至 35% 可显著减少碳排放",
-      "建筑朝向优化后年节能约 8.4%"
-    ]
+    recommendations: ["等待客户提供最终计算方案后，此处将替换为真实算法", "当前为框架占位版本"],
+    rawData: { note: "客户方案接入点" }
   };
 }
