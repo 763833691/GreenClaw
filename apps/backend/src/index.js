@@ -17,10 +17,10 @@ const COOKIE_SECURE = process.env.COOKIE_SECURE === "true";
 const ACCESS_COOKIE_NAME = process.env.ACCESS_COOKIE_NAME || "gc_access";
 const REFRESH_COOKIE_NAME = process.env.REFRESH_COOKIE_NAME || "gc_refresh";
 
-const dataDir = path.resolve(process.cwd(), "data/backend");
-const usersPath = path.join(dataDir, "users.json");
-const projectsPath = path.join(dataDir, "projects.json");
-const refreshTokensPath = path.join(dataDir, "refresh_tokens.json");
+let dataDir = path.join("/tmp", "data");
+let usersPath = path.join(dataDir, "users.json");
+let projectsPath = path.join(dataDir, "projects.json");
+let refreshTokensPath = path.join(dataDir, "refresh_tokens.json");
 
 app.use(
   cors({
@@ -32,7 +32,24 @@ app.use(cookieParser());
 app.use(express.json({ limit: "2mb" }));
 
 async function ensureDataFiles() {
-  await mkdir(dataDir, { recursive: true });
+  // Vercel serverless runtime allows writes in /tmp.
+  dataDir = path.join("/tmp", "data");
+  usersPath = path.join(dataDir, "users.json");
+  projectsPath = path.join(dataDir, "projects.json");
+  refreshTokensPath = path.join(dataDir, "refresh_tokens.json");
+
+  try {
+    await mkdir(dataDir, { recursive: true });
+    console.log(`✅ Data directory ready: ${dataDir}`);
+  } catch (error) {
+    if (error?.code === "EEXIST") {
+      console.log(`Data directory already exists: ${dataDir}`);
+    } else {
+      console.error("❌ Failed to create data directory:", error);
+      // For easier testing in serverless, keep running and surface later if file writes fail.
+    }
+  }
+
   for (const filePath of [usersPath, projectsPath, refreshTokensPath]) {
     try {
       await readFile(filePath, "utf-8");
@@ -40,6 +57,8 @@ async function ensureDataFiles() {
       await writeFile(filePath, "[]", "utf-8");
     }
   }
+
+  return dataDir;
 }
 
 async function readJson(filePath) {
