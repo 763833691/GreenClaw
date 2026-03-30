@@ -1,0 +1,11 @@
+{
+  "name": "greenclaw",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@9.12.3",
+  "scripts": {
+    "dev": "pnpm --filter frontend dev",
+    "dev:web": "pnpm --filter frontend dev",
+    "build": "pnpm --filter frontend build"
+  }
+}

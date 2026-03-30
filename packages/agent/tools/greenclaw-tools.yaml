@@ -1,0 +1,227 @@
+version: "0.1.0"
+product: "GreenClaw"
+description: "Agent tools for chat mode and Web UI structured workflows"
+
+tools:
+  - name: project_context_get
+    category: memory
+    description: 获取项目基础信息、参数快照与最近计算摘要
+    mode_support:
+      - chat
+      - web_ui
+    input_schema:
+      type: object
+      required: [project_id]
+      properties:
+        project_id:
+          type: string
+        include_history:
+          type: boolean
+          default: true
+        history_limit:
+          type: integer
+          default: 5
+    output_schema:
+      type: object
+      properties:
+        project:
+          type: object
+        latest_params:
+          type: object
+        latest_result:
+          type: object
+        history:
+          type: array
+    http:
+      method: GET
+      path: /api/projects/{project_id}/context
+    failure_policy:
+      retry: 1
+      timeout_ms: 8000
+
+  - name: project_params_patch
+    category: memory
+    description: 更新项目参数（支持来自聊天意图解析后的结构化 patch）
+    mode_support:
+      - chat
+      - web_ui
+    input_schema:
+      type: object
+      required: [project_id, patch]
+      properties:
+        project_id:
+          type: string
+        patch:
+          type: object
+          description: "例如 { envelope: { wall_u: 0.42 } }"
+        reason:
+          type: string
+          default: "user_request"
+    output_schema:
+      type: object
+      properties:
+        project_id:
+          type: string
+        version:
+          type: string
+        updated_fields:
+          type: array
+    http:
+      method: PATCH
+      path: /api/projects/{project_id}/params
+    failure_policy:
+      retry: 1
+      timeout_ms: 10000
+
+  - name: calc_run
+    category: calculation
+    description: 触发绿建计算（能耗、碳排、评分）
+    mode_support:
+      - chat
+      - web_ui
+    input_schema:
+      type: object
+      required: [project_id, calc_type]
+      properties:
+        project_id:
+          type: string
+        calc_type:
+          type: string
+          enum: [quick, full, baseline_compare, what_if]
+        params_override:
+          type: object
+          description: "可选，临时覆盖参数用于情景模拟"
+        trigger_source:
+          type: string
+          enum: [chat, web_ui, heartbeat]
+    output_schema:
+      type: object
+      properties:
+        job_id:
+          type: string
+        status:
+          type: string
+        progress:
+          type: number
+        result:
+          type: object
+    http:
+      method: POST
+      path: /api/compute/run
+    failure_policy:
+      retry: 2
+      timeout_ms: 15000
+
+  - name: calc_status_get
+    category: calculation
+    description: 查询计算任务进度或最终结果
+    mode_support:
+      - chat
+      - web_ui
+    input_schema:
+      type: object
+      required: [job_id]
+      properties:
+        job_id:
+          type: string
+    output_schema:
+      type: object
+      properties:
+        job_id:
+          type: string
+        status:
+          type: string
+        progress:
+          type: number
+        result:
+          type: object
+    http:
+      method: GET
+      path: /api/compute/jobs/{job_id}
+    failure_policy:
+      retry: 2
+      timeout_ms: 10000
+
+  - name: report_generate
+    category: report
+    description: 生成报告（PDF/Word）
+    mode_support:
+      - chat
+      - web_ui
+    input_schema:
+      type: object
+      required: [project_id, format]
+      properties:
+        project_id:
+          type: string
+        format:
+          type: string
+          enum: [pdf, word]
+        include_sections:
+          type: array
+          items:
+            type: string
+          default: [summary, energy, carbon, green_score, recommendations]
+        language:
+          type: string
+          default: zh-CN
+    output_schema:
+      type: object
+      properties:
+        report_id:
+          type: string
+        status:
+          type: string
+        preview:
+          type: object
+        download_url:
+          type: string
+    http:
+      method: POST
+      path: /api/reports/generate
+    failure_policy:
+      retry: 1
+      timeout_ms: 12000
+
+  - name: memory_append
+    category: memory
+    description: 将会话结论、关键决策、计算摘要写入项目记忆
+    mode_support:
+      - chat
+      - web_ui
+    input_schema:
+      type: object
+      required: [project_id, memory_type, content]
+      properties:
+        project_id:
+          type: string
+        memory_type:
+          type: string
+          enum: [conversation, decision, calculation_summary, report_summary]
+        content:
+          type: object
+        tags:
+          type: array
+          items:
+            type: string
+    output_schema:
+      type: object
+      properties:
+        memory_id:
+          type: string
+        stored_at:
+          type: string
+    http:
+      method: POST
+      path: /api/memory/append
+    failure_policy:
+      retry: 1
+      timeout_ms: 6000
+
+policies:
+  - name: no_fake_numeric_results
+    description: 未调用 calculation 类工具前，不输出确定性数值结论
+  - name: dual_mode_response
+    description: 聊天模式输出可读结论；Web UI 模式必须优先输出结构化字段
+  - name: traceability
+    description: 关键回答必须可追溯到工具调用结果（job_id/report_id/memory_id）
