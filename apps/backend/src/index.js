@@ -327,18 +327,40 @@ app.post("/api/calculate", authMiddleware, async (req, res) => {
   if (!projectId) {
     return res.status(400).json({ error: "project_id_required" });
   }
-  const projects = await readJson(projectsPath);
-  const project = projects.find((p) => p.id === projectId && p.ownerId === req.user.id);
-  if (!project) {
-    return res.status(404).json({ error: "project_not_found" });
-  }
 
-  // 占位：后续接入 calc-engine 异步任务系统。
-  return res.json({
-    jobId: uuidv4(),
-    status: "queued",
-    message: "calculate_job_created"
-  });
+  try {
+    const projects = await readJson(projectsPath);
+    const project = projects.find((p) => p.id === projectId && p.ownerId === req.user.id);
+    if (!project) {
+      return res.status(404).json({ error: "project_not_found" });
+    }
+
+    // 1. 调用 calculation 包进行真实计算
+    const { calculateProject } = await import("@greenclaw/calculation");
+    const jobId = uuidv4();
+
+    // 异步触发计算（推荐用队列，但先用立即计算）
+    const result = await calculateProject(project);
+
+    // 2. 保存计算结果到项目
+    const idx = projects.findIndex((p) => p.id === projectId);
+    projects[idx].params = { ...projects[idx].params, ...result.params };
+    projects[idx].lastCalculatedAt = new Date().toISOString();
+    await writeJson(projectsPath, projects);
+
+    return res.json({
+      jobId,
+      status: "completed",
+      message: "calculation_completed",
+      result
+    });
+  } catch (error) {
+    console.error("Calculate error:", error);
+    return res.status(500).json({
+      error: "calculation_failed",
+      message: error?.message || "unknown_error"
+    });
+  }
 });
 
 await ensureDataFiles();
