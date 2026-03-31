@@ -20,7 +20,8 @@ export function middleware(request: NextRequest) {
 
   if (isProtectedPath(pathname) && !hasSession) {
     const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("next", pathname);
+    const nextPath = `${pathname}${request.nextUrl.search}`;
+    loginUrl.searchParams.set("next", nextPath);
     return NextResponse.redirect(loginUrl);
   }
 

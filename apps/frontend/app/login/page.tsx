@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { apiFetch } from "@/lib/api-client";
+import { apiFetch, setJwtToken } from "@/lib/api-client";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -30,6 +30,10 @@ export default function LoginPage() {
         const data = await response.json().catch(() => ({}));
         setError(data.error || "登录失败，请检查账号或密码。");
         return;
+      }
+      const data = await response.json().catch(() => ({}));
+      if (typeof data?.accessToken === "string") {
+        setJwtToken(data.accessToken);
       }
       router.push("/dashboard");
       router.refresh();

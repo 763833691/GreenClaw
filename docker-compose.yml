@@ -1,0 +1,172 @@
+name: greenclaw
+
+services:
+  greenclaw-gateway:
+    image: node:20-alpine
+    container_name: greenclaw-gateway
+    working_dir: /workspace
+    command: >
+      sh -c "corepack enable &&
+      pnpm install --frozen-lockfile=false &&
+      pnpm --filter backend start"
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: 18789
+      ENABLE_LOCAL_LISTEN: "true"
+      REDIS_URL: redis://redis:6379
+      CALC_ENGINE_URL: http://python-calculator:8000
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost}
+      MEMORY_SQLITE_PATH: /workspace/data/greenclaw.db
+    ports:
+      - "127.0.0.1:18789:18789"
+    volumes:
+      - ./:/workspace
+      - gateway_data:/workspace/data
+    depends_on:
+      python-calculator:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:18789/api/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: unless-stopped
+    networks:
+      - greenclaw-net
+
+  greenclaw-frontend:
+    image: node:20-alpine
+    container_name: greenclaw-frontend
+    working_dir: /workspace
+    command: >
+      sh -c "corepack enable &&
+      pnpm install --frozen-lockfile=false &&
+      pnpm --filter frontend build &&
+      pnpm --filter frontend start --hostname 0.0.0.0 --port 3000"
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost}
+      NEXT_PUBLIC_CALC_API_BASE_URL: ${NEXT_PUBLIC_CALC_API_BASE_URL:-http://localhost:8000}
+    volumes:
+      - ./:/workspace
+    depends_on:
+      greenclaw-gateway:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3000').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 20s
+      timeout: 5s
+      retries: 6
+      start_period: 40s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: unless-stopped
+    networks:
+      - greenclaw-net
+
+  python-calculator:
+    image: python:3.11-slim
+    container_name: python-calculator
+    working_dir: /workspace/packages/calculation
+    command: >
+      sh -c "pip install --no-cache-dir -r requirements.txt &&
+      uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    env_file:
+      - .env
+    environment:
+      PYTHONUNBUFFERED: "1"
+      LOG_LEVEL: ${PYTHON_LOG_LEVEL:-info}
+      GB_RULESET_VERSION: ${GB_RULESET_VERSION:-GB_T_50378_2019}
+      ENERGYPLUS_PATH: ${ENERGYPLUS_PATH:-}
+    volumes:
+      - ./:/workspace
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import sys,urllib.request;sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health').status==200 else 1)\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: unless-stopped
+    networks:
+      - greenclaw-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: greenclaw-redis
+    command: ["redis-server", "--appendonly", "yes"]
+    env_file:
+      - .env
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: unless-stopped
+    networks:
+      - greenclaw-net
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: greenclaw-nginx
+    depends_on:
+      greenclaw-frontend:
+        condition: service_healthy
+      greenclaw-gateway:
+        condition: service_healthy
+    ports:
+      - "${NGINX_HTTP_PORT:-80}:80"
+      - "${NGINX_HTTPS_PORT:-443}:443"
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./infra/nginx/certs:/etc/nginx/certs:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: unless-stopped
+    networks:
+      - greenclaw-net
+
+volumes:
+  redis_data:
+  gateway_data:
+
+networks:
+  greenclaw-net:
+    driver: bridge

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { apiFetch } from "@/lib/api-client";
+import { apiFetch, setJwtToken } from "@/lib/api-client";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -31,6 +31,10 @@ export default function RegisterPage() {
         const data = await response.json().catch(() => ({}));
         setError(data.error || "注册失败，请稍后重试。");
         return;
+      }
+      const data = await response.json().catch(() => ({}));
+      if (typeof data?.accessToken === "string") {
+        setJwtToken(data.accessToken);
       }
       router.push("/dashboard");
       router.refresh();

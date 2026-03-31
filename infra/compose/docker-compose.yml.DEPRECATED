@@ -1,0 +1,20 @@
+DEPRECATED - DO NOT USE
+
+This deployment file has been retired.
+
+Please use the root-level docker-compose.yml as the single source of truth:
+
+  ./docker-compose.yml
+
+Reason:
+- OpenClaw Gateway and Agent require long-running services.
+- The project now uses a unified Docker Compose deployment entrypoint in the repository root.
+- Keeping multiple compose entrypoints caused confusion and deployment drift.
+
+Migration:
+1) Copy environment template:
+   cp .env.example .env
+2) Start services:
+   docker compose up -d
+
+If you are reading this file from old scripts, update those scripts immediately.
