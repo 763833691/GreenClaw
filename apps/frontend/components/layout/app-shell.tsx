@@ -20,9 +20,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
   return (
-    <div className="min-h-screen bg-muted/30">
+    <div className="gb-page-bg min-h-screen bg-muted/30">
       <div className="mx-auto flex min-h-screen max-w-[1600px]">
-        <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r bg-card px-3 py-6 lg:flex">
+        <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-border/70 bg-card/95 px-3 py-6 backdrop-blur lg:flex">
           <div className="mb-8 flex items-center gap-2 px-2">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
               <Leaf className="h-5 w-5" />
@@ -63,7 +63,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-10 flex h-14 items-center justify-between gap-4 border-b bg-card/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-card/80 md:px-6">
+          <header className="sticky top-0 z-10 flex h-14 items-center justify-between gap-4 border-b border-border/70 bg-card/90 px-4 backdrop-blur supports-[backdrop-filter]:bg-card/80 md:px-6">
             <div className="min-w-0 lg:hidden">
               <p className="truncate text-sm font-semibold">GreenClaw</p>
             </div>
@@ -102,7 +102,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               })}
             </div>
           </div>
-          <main className="flex-1 p-4 md:p-6">{children}</main>
+          <main className="flex-1 p-4 md:p-6 lg:p-8">{children}</main>
         </div>
       </div>
     </div>

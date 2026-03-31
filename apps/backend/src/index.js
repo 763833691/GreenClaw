@@ -16,6 +16,7 @@ const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || "http://localhost:3000";
 const COOKIE_SECURE = process.env.COOKIE_SECURE === "true";
 const ACCESS_COOKIE_NAME = process.env.ACCESS_COOKIE_NAME || "gc_access";
 const REFRESH_COOKIE_NAME = process.env.REFRESH_COOKIE_NAME || "gc_refresh";
+const ENABLE_LOCAL_LISTEN = process.env.ENABLE_LOCAL_LISTEN !== "false";
 
 let dataDir = path.join("/tmp", "data");
 let usersPath = path.join(dataDir, "users.json");
@@ -144,6 +145,9 @@ function authMiddleware(req, res, next) {
 }
 
 app.get("/health", (_, res) => {
+  res.json({ status: "ok", service: "backend", timestamp: new Date().toISOString() });
+});
+app.get("/api/health", (_, res) => {
   res.json({ status: "ok", service: "backend", timestamp: new Date().toISOString() });
 });
 
@@ -411,6 +415,13 @@ app.get("/api/calculate/status/:jobId", authMiddleware, async (req, res) => {
 });
 
 await ensureDataFiles();
+
+// 本地调试模式：继续监听端口；Vercel Serverless 部署场景只导出 app。
+if (ENABLE_LOCAL_LISTEN && process.env.VERCEL !== "1") {
+  app.listen(PORT, () => {
+    console.log(`GreenClaw backend running on :${PORT}`);
+  });
+}
 
 // 导出 app，供 Vercel Serverless Function 使用
 export default app;

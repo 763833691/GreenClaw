@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowRight, FolderKanban, Sparkles, TrendingDown } from "lucide-react";
+import { ArrowRight, Building2, FolderKanban, Sparkles, TrendingDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -84,6 +84,11 @@ export default function HomePage() {
 
   return (
     <div className="space-y-6">
+      <div className="gb-tip flex items-center justify-between gap-3">
+        <p>欢迎进入绿建工作台，当前数据均来自真实后端接口，可直接用于项目创建与计算流程。</p>
+        <Badge className="hidden sm:inline-flex">Product UI</Badge>
+      </div>
+
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Card>
           <CardHeader className="pb-2">
@@ -146,7 +151,13 @@ export default function HomePage() {
                 </Button>
               </div>
             ) : items.length === 0 ? (
-              <p className="p-6 text-sm text-muted-foreground">暂无项目，右侧创建第一个项目。</p>
+              <div className="gb-empty">
+                <div className="gb-empty-icon">
+                  <Building2 className="h-6 w-6" />
+                </div>
+                <p className="text-sm font-medium">还没有项目</p>
+                <p className="text-xs text-muted-foreground">从右侧快速新建开始，完成后即可进入计算流程。</p>
+              </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -207,7 +218,7 @@ export default function HomePage() {
                   id="project-type"
                   value={buildingType}
                   onChange={(e) => setBuildingType(e.target.value)}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="gb-input-like"
                 >
                   <option>公共建筑</option>
                   <option>居住建筑</option>

@@ -33,3 +33,27 @@
     @apply bg-background text-foreground antialiased;
   }
 }
+
+@layer components {
+  .gb-page-bg {
+    background:
+      radial-gradient(circle at 8% 5%, hsl(var(--primary) / 0.09), transparent 32%),
+      radial-gradient(circle at 92% 0%, hsl(var(--secondary) / 0.09), transparent 24%);
+  }
+
+  .gb-tip {
+    @apply rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-foreground;
+  }
+
+  .gb-empty {
+    @apply flex flex-col items-center justify-center gap-3 px-6 py-12 text-center;
+  }
+
+  .gb-empty-icon {
+    @apply flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/15 to-secondary/15 text-primary;
+  }
+
+  .gb-input-like {
+    @apply flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70 focus-visible:ring-offset-2;
+  }
+}
