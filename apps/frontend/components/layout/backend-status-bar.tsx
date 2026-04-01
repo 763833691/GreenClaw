@@ -62,9 +62,9 @@ export function BackendStatusBar() {
     tone = "warn";
     Icon = AlertCircle;
     title = "端口可访问，但不是本项目业务后端";
-    detail = `当前 ${configured} 返回 service="${primary?.service ?? "?"}"，项目 API（如 /api/projects）可能不可用。请启动 apps/backend（默认 http://localhost:4000）并设置 NEXT_PUBLIC_API_BASE 指向该地址。`;
+    detail = `当前 ${configured} 返回 service="${primary?.service ?? "?"}"，项目 API（如 /api/projects）可能不可用。请确认阿里云后端服务已运行且可公网访问。`;
     if (fallbackIsBackend && candidates[1] && candidates[1] !== configured) {
-      detail += ` 检测到地址 ${candidates[1]} 为业务后端，可将 .env.local 中 NEXT_PUBLIC_API_BASE 改为该地址。`;
+      detail += ` 检测到地址 ${candidates[1]} 为业务后端。`;
     }
   } else if (primary?.ok && !primary.service) {
     tone = "warn";
@@ -80,9 +80,9 @@ export function BackendStatusBar() {
     } else {
       detail = primary?.error
         ? `${configured}：${primary.error}`
-        : `请确认已在本机启动 apps/backend，且 NEXT_PUBLIC_API_BASE 指向正确端口。`;
+        : "请确认阿里云后端服务已启动，且 4000 端口对外可访问。";
       if (fallbackIsBackend && candidates[1]) {
-        detail += ` 地址 ${candidates[1]} 可连通业务后端，建议修改 .env.local。`;
+        detail += ` 地址 ${candidates[1]} 可连通业务后端。`;
       }
     }
   }

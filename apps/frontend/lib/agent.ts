@@ -1,12 +1,7 @@
-const DEFAULT_GATEWAY = "http://localhost:18789";
+const API_BASE = "http://101.133.237.134:4000";
 
 export function getGatewayBaseUrl() {
-  return (
-    process.env.NEXT_PUBLIC_API_BASE ??
-    process.env.NEXT_PUBLIC_GATEWAY_URL ??
-    process.env.NEXT_PUBLIC_API_BASE_URL ??
-    DEFAULT_GATEWAY
-  );
+  return API_BASE;
 }
 
 export function getAgentWsUrl(path = "/ws/agent") {

@@ -3,9 +3,6 @@
   "framework": "nextjs",
   "installCommand": "cd ../.. && pnpm install --frozen-lockfile",
   "buildCommand": "cd ../.. && pnpm --filter frontend build",
-  "env": {
-    "VERCEL_BACKEND_ORIGIN": "http://101.133.237.134:4000"
-  },
   "headers": [
     {
       "source": "/(.*)",

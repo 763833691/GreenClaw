@@ -1,52 +1,22 @@
-const DEFAULT_BACKEND = "http://localhost:4000";
-/** 历史/其他网关端口，可能与业务 backend 冲突 */
-const ALT_PORT_URL = "http://localhost:18789";
+const API_BASE = "http://101.133.237.134:4000";
 
-/**
- * 解析 API 基址：
- * - 显式设为 `""` 或 `same-origin`：走当前站点 `/api/*`（配合 next.config rewrites 转发到真实后端）
- * - 未设置且部署在 Vercel：默认同源（空字符串）
- * - 本地开发：默认 localhost:4000
- */
 function resolveBackendBaseUrl(): string {
-  const candidates = [
-    process.env.NEXT_PUBLIC_API_BASE,
-    process.env.NEXT_PUBLIC_GATEWAY_URL,
-    process.env.NEXT_PUBLIC_API_BASE_URL
-  ];
-  for (const v of candidates) {
-    if (v === "" || v === "same-origin") return "";
-  }
-  const explicit = process.env.NEXT_PUBLIC_API_BASE ?? process.env.NEXT_PUBLIC_GATEWAY_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL;
-  if (explicit) return explicit.replace(/\/$/, "");
-  if (process.env.VERCEL === "1") return "";
-  if (process.env.NODE_ENV === "production") return "";
-  return DEFAULT_BACKEND;
+  return API_BASE;
 }
 
 const BACKEND_BASE_URL = resolveBackendBaseUrl();
 
-/** 按顺序尝试的基址：环境变量优先，再 4000，再 18789（去重）。避免「配置与 FALLBACK 相同导致永不切换」的 bug。 */
 export function getApiBaseCandidates(): string[] {
-  const base = resolveBackendBaseUrl();
-  if (base === "") return [""];
-  return [...new Set([base, DEFAULT_BACKEND, ALT_PORT_URL])];
+  return [resolveBackendBaseUrl()];
 }
 
 /** 当前前端请求使用的 API 基址（与 apiFetch 一致，用于展示） */
 export function getConfiguredApiBaseUrl(): string {
-  const b = resolveBackendBaseUrl();
-  if (b === "") {
-    if (typeof window !== "undefined") {
-      return `${window.location.origin}（同源 /api，经 Next/Vercel 转发）`;
-    }
-    return "（同源 /api）";
-  }
-  return b;
+  return resolveBackendBaseUrl();
 }
 
 export function getFallbackApiBaseUrl(): string {
-  return BACKEND_BASE_URL === DEFAULT_BACKEND ? ALT_PORT_URL : DEFAULT_BACKEND;
+  return BACKEND_BASE_URL;
 }
 
 export type BackendHealthProbe = {
@@ -63,7 +33,7 @@ export type BackendHealthProbe = {
 export async function probeApiHealth(baseUrl: string, timeoutMs = 4000): Promise<BackendHealthProbe> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
-  const healthUrl = baseUrl === "" ? "/api/health" : `${baseUrl}/api/health`;
+  const healthUrl = `${baseUrl}/api/health`;
   try {
     const res = await fetch(healthUrl, {
       signal: controller.signal,
@@ -73,7 +43,7 @@ export async function probeApiHealth(baseUrl: string, timeoutMs = 4000): Promise
     clearTimeout(timer);
     const data = (await res.json().catch(() => ({}))) as { service?: string; status?: string };
     return {
-      url: baseUrl === "" ? "(same-origin)" : baseUrl,
+      url: baseUrl,
       ok: res.ok,
       status: res.status,
       service: typeof data.service === "string" ? data.service : undefined,
@@ -83,7 +53,7 @@ export async function probeApiHealth(baseUrl: string, timeoutMs = 4000): Promise
     clearTimeout(timer);
     const name = e instanceof Error ? e.name : "";
     return {
-      url: baseUrl === "" ? "(same-origin)" : baseUrl,
+      url: baseUrl,
       ok: false,
       error: name === "AbortError" ? "请求超时" : "无法连接"
     };
@@ -147,7 +117,7 @@ export async function apiFetch(path: string, options: RequestOptions = {}) {
         const baseUrl = bases[b];
         const innerTimeout = withTimeout(timeoutMs);
         try {
-          const requestUrl = baseUrl === "" ? path : `${baseUrl}${path}`;
+          const requestUrl = `${baseUrl}${path}`;
           response = await fetch(requestUrl, {
             ...init,
             signal: innerTimeout.signal,
@@ -206,7 +176,7 @@ export async function apiFetch(path: string, options: RequestOptions = {}) {
 
 export async function tryRefresh(timeoutMs = 8000) {
   const timeout = withTimeout(timeoutMs);
-  const refreshUrl = BACKEND_BASE_URL === "" ? "/api/auth/refresh" : `${BACKEND_BASE_URL}/api/auth/refresh`;
+  const refreshUrl = `${BACKEND_BASE_URL}/api/auth/refresh`;
   try {
     const response = await fetch(refreshUrl, {
       method: "POST",
