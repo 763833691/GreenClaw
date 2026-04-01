@@ -122,7 +122,11 @@ importers:
         specifier: ^5.6.3
         version: 5.9.3
 
-  packages/agent: {}
+  packages/agent:
+    dependencies:
+      '@greenclaw/calculation':
+        specifier: workspace:*
+        version: link:../calculation
 
   packages/calculation: {}
 
