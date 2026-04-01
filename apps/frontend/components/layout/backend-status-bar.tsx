@@ -71,6 +71,11 @@ export function BackendStatusBar() {
     Icon = AlertCircle;
     title = "健康检查响应异常";
     detail = `请确认 ${configured} 是否为 GreenClaw backend。`;
+  } else if (primary?.status === 401) {
+    tone = "warn";
+    Icon = AlertCircle;
+    title = "后端需要访问密码";
+    detail = "健康检查返回 401，请在顶部“设置”中填写访问密码（Access Code）后重新检测。";
   } else {
     tone = "err";
     Icon = WifiOff;

@@ -1,13 +1,21 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { BarChart3, Building2, FileText, Home, Leaf, MessageSquare, Settings } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { AuthHeader } from "@/components/layout/auth-header";
+import {
+  clearAccessCode,
+  onAccessCodeRequired,
+  setAccessCode
+} from "@/lib/api-client";
 
 const nav = [
   { href: "/", label: "首页", icon: Home },
@@ -19,6 +27,34 @@ const nav = [
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const [showAccessCodePanel, setShowAccessCodePanel] = useState(false);
+  const [accessCodeInput, setAccessCodeInput] = useState("");
+  const [accessCodeMessage, setAccessCodeMessage] = useState("");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const saved = localStorage.getItem("gc_access_code") ?? "";
+    setAccessCodeInput(saved);
+  }, []);
+
+  useEffect(() => {
+    return onAccessCodeRequired(() => {
+      setShowAccessCodePanel(true);
+      setAccessCodeMessage("密码错误或未输入，请设置访问密码后重试。");
+    });
+  }, []);
+
+  function saveAccessCode() {
+    const next = accessCodeInput.trim();
+    setAccessCode(next);
+    setAccessCodeMessage(next ? "访问密码已保存，后续请求会自动携带。" : "已清空访问密码。");
+  }
+
+  function clearCode() {
+    setAccessCodeInput("");
+    clearAccessCode();
+    setAccessCodeMessage("已清空访问密码。");
+  }
 
   return (
     <div className="gb-page-bg min-h-screen bg-muted/30">
@@ -74,12 +110,43 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
             <div className="flex shrink-0 items-center gap-2">
               <AuthHeader />
-              <Button variant="outline" size="sm" className="gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={() => setShowAccessCodePanel((v) => !v)}
+              >
                 <Settings className="h-4 w-4" />
                 <span className="hidden sm:inline">设置</span>
               </Button>
             </div>
           </header>
+          {showAccessCodePanel ? (
+            <div className="border-b bg-card px-4 py-3 md:px-6">
+              <div className="mx-auto flex w-full max-w-[780px] flex-col gap-2">
+                <Label htmlFor="access-code-input">访问密码（Access Code）</Label>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Input
+                    id="access-code-input"
+                    type="password"
+                    value={accessCodeInput}
+                    onChange={(e) => setAccessCodeInput(e.target.value)}
+                    placeholder="请输入后端访问密码"
+                  />
+                  <Button type="button" onClick={saveAccessCode}>
+                    保存
+                  </Button>
+                  <Button type="button" variant="outline" onClick={clearCode}>
+                    清空
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  保存后会写入浏览器本地存储，并自动添加到每个请求的 Authorization / x-code 请求头。
+                </p>
+                {accessCodeMessage ? <p className="text-xs text-red-600">{accessCodeMessage}</p> : null}
+              </div>
+            </div>
+          ) : null}
           <div className="border-b bg-card px-2 py-2 lg:hidden">
             <div className="flex gap-1 overflow-x-auto pb-1">
               {nav.map((item) => {

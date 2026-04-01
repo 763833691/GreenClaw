@@ -1,4 +1,6 @@
 const API_BASE = "/api/remote";
+const ACCESS_CODE_STORAGE_KEY = "gc_access_code";
+const ACCESS_CODE_REQUIRED_EVENT = "gc:access-code-required";
 
 function resolveBackendBaseUrl(): string {
   return API_BASE;
@@ -27,6 +29,48 @@ export type BackendHealthProbe = {
   error?: string;
 };
 
+function getAccessCode() {
+  if (typeof window === "undefined") return "";
+  return localStorage.getItem(ACCESS_CODE_STORAGE_KEY) ?? "";
+}
+
+export function setAccessCode(code: string) {
+  if (typeof window === "undefined") return;
+  if (code) {
+    localStorage.setItem(ACCESS_CODE_STORAGE_KEY, code);
+    return;
+  }
+  localStorage.removeItem(ACCESS_CODE_STORAGE_KEY);
+}
+
+export function clearAccessCode() {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(ACCESS_CODE_STORAGE_KEY);
+}
+
+export function emitAccessCodeRequired() {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent(ACCESS_CODE_REQUIRED_EVENT));
+}
+
+export function onAccessCodeRequired(handler: () => void) {
+  if (typeof window === "undefined") {
+    return () => {};
+  }
+  const wrapped = () => handler();
+  window.addEventListener(ACCESS_CODE_REQUIRED_EVENT, wrapped);
+  return () => window.removeEventListener(ACCESS_CODE_REQUIRED_EVENT, wrapped);
+}
+
+function getAccessCodeHeaders() {
+  const code = getAccessCode().trim();
+  if (!code) return {};
+  return {
+    Authorization: `Bearer ${code}`,
+    "x-code": code
+  };
+}
+
 /**
  * 探测指定基址的 /api/health，用于首页展示「是否连对后端」。
  */
@@ -38,7 +82,10 @@ export async function probeApiHealth(baseUrl: string, timeoutMs = 4000): Promise
     const res = await fetch(healthUrl, {
       signal: controller.signal,
       mode: "cors",
-      credentials: "omit"
+      credentials: "omit",
+      headers: {
+        ...getAccessCodeHeaders()
+      }
     });
     clearTimeout(timer);
     const data = (await res.json().catch(() => ({}))) as { service?: string; status?: string };
@@ -106,6 +153,7 @@ async function shouldRetryApiOnAnotherBase(path: string, res: Response): Promise
 export async function apiFetch(path: string, options: RequestOptions = {}) {
   const { retryOnAuthError = true, timeoutMs = 10000, retries = 1, ...init } = options;
   const authToken = getJwtToken();
+  const accessCodeHeaders = getAccessCodeHeaders();
   let response: Response;
 
   let lastError: unknown = null;
@@ -126,6 +174,7 @@ export async function apiFetch(path: string, options: RequestOptions = {}) {
             headers: {
               "Content-Type": "application/json",
               ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+              ...accessCodeHeaders,
               ...(init.headers ?? {})
             }
           });
@@ -150,6 +199,9 @@ export async function apiFetch(path: string, options: RequestOptions = {}) {
         if (refreshOk) {
           return apiFetch(path, { ...options, retryOnAuthError: false });
         }
+      }
+      if (response.status === 401) {
+        emitAccessCodeRequired();
       }
 
       return response;
@@ -182,7 +234,10 @@ export async function tryRefresh(timeoutMs = 8000) {
       method: "POST",
       signal: timeout.signal,
       mode: "cors",
-      credentials: "include"
+      credentials: "include",
+      headers: {
+        ...getAccessCodeHeaders()
+      }
     });
     timeout.clear();
     if (response.ok) {
