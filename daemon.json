@@ -1,0 +1,11 @@
+{
+  "registry-mirrors": [
+    "https://dockerproxy.com",
+    "https://docker.m.daocloud.io",
+    "https://registry.docker-cn.com",
+    "https://hub-mirror.c.163.com",
+    "https://docker.xuanyuan.me"
+  ],
+  "max-concurrent-downloads": 3,
+  "dns": ["8.8.8.8", "114.114.114.114"]
+}

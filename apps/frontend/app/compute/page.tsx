@@ -15,6 +15,49 @@ export default function ComputePage() {
   const [status, setStatus] = useState<any>(null);
   const [result, setResult] = useState<any>(null);
 
+  const runQuickDemo = async () => {
+    setLoading(true);
+    setResult(null);
+    setStatus(null);
+    setJobId(null);
+    try {
+      const res = await apiFetch("/calculate", {
+        method: "POST",
+        body: JSON.stringify({
+          project_id: "demo-quick-run",
+          params: {
+            project_name: "客户演示项目A",
+            city: "上海",
+            climate_zone: "夏热冬冷",
+            building_type: "办公建筑",
+            area: 18500,
+            floors: 16,
+            window_wall_ratio: 0.41,
+            wall_u_value: 0.50,
+            roof_u_value: 0.38,
+            glass_u_value: 1.9,
+            shgc: 0.36,
+            hvac_efficiency: 0.89,
+            lighting_power_density: 7.8,
+            renewable_ratio: 0.22
+          }
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(`快速测试失败：${data.error || "unknown_error"}`);
+        return;
+      }
+      setResult(data.result ?? data);
+      alert("✅ 快速测试成功，已返回演示结果");
+    } catch (err) {
+      console.error(err);
+      alert("快速测试失败，请确认网关和计算引擎已启动");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // 触发计算
   const handleCalculate = async () => {
     if (!projectId) return alert("请选择项目");
@@ -102,6 +145,9 @@ export default function ComputePage() {
                   开始计算
                 </>
               )}
+            </Button>
+            <Button onClick={runQuickDemo} disabled={loading} variant="outline" className="w-full">
+              快速测试（直调 /calculate）
             </Button>
 
             {!jobId ? (

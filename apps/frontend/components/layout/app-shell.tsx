@@ -7,10 +7,11 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { AuthHeader } from "@/components/layout/auth-header";
 
 const nav = [
   { href: "/", label: "首页", icon: Home },
-  { href: "/projects/demo", label: "项目详情", icon: Building2 },
+  { href: "/projects", label: "我的项目", icon: Building2 },
   { href: "/compute", label: "计算中心", icon: BarChart3 },
   { href: "/assistant", label: "优化助手", icon: MessageSquare },
   { href: "/reports", label: "报告中心", icon: FileText }
@@ -71,10 +72,13 @@ export function AppShell({ children }: { children: ReactNode }) {
               <p className="text-sm font-semibold text-foreground">绿建项目工作台</p>
               <p className="text-xs text-muted-foreground">能耗模拟 · 绿建评分 · 碳排分析 · 优化建议</p>
             </div>
-            <Button variant="outline" size="sm" className="shrink-0 gap-2">
-              <Settings className="h-4 w-4" />
-              <span className="hidden sm:inline">设置</span>
-            </Button>
+            <div className="flex shrink-0 items-center gap-2">
+              <AuthHeader />
+              <Button variant="outline" size="sm" className="gap-2">
+                <Settings className="h-4 w-4" />
+                <span className="hidden sm:inline">设置</span>
+              </Button>
+            </div>
           </header>
           <div className="border-b bg-card px-2 py-2 lg:hidden">
             <div className="flex gap-1 overflow-x-auto pb-1">

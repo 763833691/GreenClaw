@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { BackendStatusBar } from "@/components/layout/backend-status-bar";
 import { apiFetch } from "@/lib/api-client";
 
 type Project = {
@@ -18,6 +19,23 @@ type Project = {
   createdAt?: string;
   updatedAt?: string;
 };
+
+function describeCreateError(raw: string): { message: string; showLoginLink: boolean } {
+  if (raw === "missing_token") {
+    return {
+      message: "创建项目需要登录：后端会校验身份后才写入数据库。",
+      showLoginLink: true
+    };
+  }
+  if (raw === "not_found") {
+    return {
+      message:
+        "请求发到了没有「项目接口」的服务（常见于 18789 被其他网关占用）。请确认已启动 apps/backend，并查看页顶「后端连通」是否为绿色。",
+      showLoginLink: false
+    };
+  }
+  return { message: raw, showLoginLink: false };
+}
 
 function useProjects() {
   const [items, setItems] = useState<Project[]>([]);
@@ -58,6 +76,7 @@ export default function HomePage() {
   const recentProject = items[0];
   const avgEnergySaving = useMemo(() => (items.length ? "23.4%" : "--"), [items.length]);
   const avgCarbonReduction = useMemo(() => (items.length ? "18.9%" : "--"), [items.length]);
+  const createErrHint = useMemo(() => (createError ? describeCreateError(createError) : null), [createError]);
 
   async function createProject(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -84,6 +103,7 @@ export default function HomePage() {
 
   return (
     <div className="space-y-6">
+      <BackendStatusBar />
       <div className="gb-tip flex items-center justify-between gap-3">
         <p>欢迎进入绿建工作台，当前数据均来自真实后端接口，可直接用于项目创建与计算流程。</p>
         <Badge className="hidden sm:inline-flex">Product UI</Badge>
@@ -198,7 +218,10 @@ export default function HomePage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">快速新建</CardTitle>
-            <CardDescription>真实接口：`POST /api/projects`</CardDescription>
+            <CardDescription>
+              点击创建后，浏览器会请求业务后端的 <code className="rounded bg-muted px-1 py-0.5 text-xs">POST /api/projects</code>
+              （不是占位假数据）。若失败，请看下方红字说明或页顶连通状态。
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <form className="space-y-4" onSubmit={createProject}>
@@ -225,7 +248,16 @@ export default function HomePage() {
                   <option>工业建筑</option>
                 </select>
               </div>
-              {createError ? <p className="text-sm text-red-600">{createError}</p> : null}
+              {createErrHint ? (
+                <div className="space-y-1 text-sm text-red-600">
+                  <p>{createErrHint.message}</p>
+                  {createErrHint.showLoginLink ? (
+                    <Link href="/login" className="font-medium text-primary underline underline-offset-2">
+                      前往登录
+                    </Link>
+                  ) : null}
+                </div>
+              ) : null}
               <Button className="w-full" type="submit" disabled={creating}>
                 {creating ? "创建中..." : "创建项目"}
               </Button>

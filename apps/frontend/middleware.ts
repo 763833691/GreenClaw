@@ -18,6 +18,11 @@ export function middleware(request: NextRequest) {
   const refresh = request.cookies.get("gc_refresh")?.value;
   const hasSession = Boolean(access || refresh);
 
+  // 旧侧栏占位链接，避免打开不存在的固定 ID
+  if (pathname === "/projects/demo") {
+    return NextResponse.redirect(new URL("/projects", request.url));
+  }
+
   if (isProtectedPath(pathname) && !hasSession) {
     const loginUrl = new URL("/login", request.url);
     const nextPath = `${pathname}${request.nextUrl.search}`;
@@ -33,5 +38,14 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/projects/:path*", "/compute/:path*", "/assistant/:path*", "/reports/:path*", "/login", "/register"]
+  matcher: [
+    "/dashboard/:path*",
+    "/projects",
+    "/projects/:path*",
+    "/compute/:path*",
+    "/assistant/:path*",
+    "/reports/:path*",
+    "/login",
+    "/register"
+  ]
 };

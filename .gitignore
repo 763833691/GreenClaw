@@ -2,6 +2,12 @@ node_modules/
 jspm_packages/
 web_modules/
 
+# Next / Vercel / OS（部署清单要求显式忽略）
+.next/
+.vercel/
+.DS_Store
+packages/calculation/__pycache__/
+
 .next
 out
 dist

@@ -47,7 +47,15 @@ export default function LoginPage() {
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle className="text-2xl">登录 GreenClaw</CardTitle>
-          <CardDescription>使用账号登录后可访问项目与计算工作台。</CardDescription>
+          <CardDescription className="space-y-2">
+            <p>使用账号登录后可访问项目与计算工作台。</p>
+            <p className="rounded-md border border-dashed border-primary/30 bg-primary/5 px-3 py-2 text-xs text-foreground">
+              <span className="font-medium">本地演示账号（后端启动时自动创建，生产环境不会生成）：</span>
+              <br />
+              邮箱 <code className="rounded bg-muted px-1">demo@greenclaw.local</code> · 密码{" "}
+              <code className="rounded bg-muted px-1">demo123456</code>
+            </p>
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={onSubmit}>

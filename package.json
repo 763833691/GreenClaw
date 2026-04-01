@@ -4,8 +4,13 @@
   "private": true,
   "packageManager": "pnpm@9.12.3",
   "scripts": {
-    "dev": "pnpm --filter frontend dev",
+    "dev": "concurrently \"pnpm run dev:gateway\" \"pnpm --filter frontend dev\"",
+    "dev:gateway": "pnpm --filter backend dev",
+    "dev:backend": "pnpm --filter backend dev",
     "dev:web": "pnpm --filter frontend dev",
     "build": "pnpm --filter frontend build"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
   }
 }
