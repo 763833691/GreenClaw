@@ -1,4 +1,4 @@
-const API_BASE = "http://101.133.237.134:4000";
+const API_BASE = "/api/remote";
 
 function resolveBackendBaseUrl(): string {
   return API_BASE;
