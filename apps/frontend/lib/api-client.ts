@@ -62,7 +62,7 @@ export function onAccessCodeRequired(handler: () => void) {
   return () => window.removeEventListener(ACCESS_CODE_REQUIRED_EVENT, wrapped);
 }
 
-function getAccessCodeHeaders() {
+export function getAccessCodeHeaders(): Record<string, string> {
   const code = getAccessCode().trim();
   if (!code) return {};
   return {
