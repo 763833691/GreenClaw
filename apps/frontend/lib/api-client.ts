@@ -1,5 +1,6 @@
 const API_BASE = "/api/remote";
-const ACCESS_CODE_STORAGE_KEY = "gc_access_code";
+const ACCESS_CODE_STORAGE_KEY = "access_code";
+const ACCESS_CODE_STORAGE_KEY_LEGACY = "gc_access_code";
 const ACCESS_CODE_REQUIRED_EVENT = "gc:access-code-required";
 
 function resolveBackendBaseUrl(): string {
@@ -31,21 +32,29 @@ export type BackendHealthProbe = {
 
 function getAccessCode() {
   if (typeof window === "undefined") return "";
-  return localStorage.getItem(ACCESS_CODE_STORAGE_KEY) ?? "";
+  const code =
+    localStorage.getItem(ACCESS_CODE_STORAGE_KEY) ??
+    localStorage.getItem(ACCESS_CODE_STORAGE_KEY_LEGACY) ??
+    "";
+  return code;
 }
 
 export function setAccessCode(code: string) {
   if (typeof window === "undefined") return;
   if (code) {
     localStorage.setItem(ACCESS_CODE_STORAGE_KEY, code);
+    // 兼容历史版本读取逻辑
+    localStorage.setItem(ACCESS_CODE_STORAGE_KEY_LEGACY, code);
     return;
   }
   localStorage.removeItem(ACCESS_CODE_STORAGE_KEY);
+  localStorage.removeItem(ACCESS_CODE_STORAGE_KEY_LEGACY);
 }
 
 export function clearAccessCode() {
   if (typeof window === "undefined") return;
   localStorage.removeItem(ACCESS_CODE_STORAGE_KEY);
+  localStorage.removeItem(ACCESS_CODE_STORAGE_KEY_LEGACY);
 }
 
 export function emitAccessCodeRequired() {
@@ -89,14 +98,14 @@ export async function probeApiHealth(baseUrl: string, timeoutMs = 4000): Promise
     const healthUrl = `${base}${path}`;
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const headers = getAccessCodeHeaders();
+    console.log("Sending Headers:", headers);
     try {
       const res = await fetch(healthUrl, {
         signal: controller.signal,
         mode: "cors",
         credentials: "omit",
-        headers: {
-          ...getAccessCodeHeaders()
-        }
+        headers
       });
       clearTimeout(timer);
       const data = (await res.json().catch(() => ({}))) as { service?: string; status?: string };
