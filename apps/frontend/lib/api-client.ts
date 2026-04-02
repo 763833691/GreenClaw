@@ -72,39 +72,56 @@ export function getAccessCodeHeaders(): Record<string, string> {
 }
 
 /**
- * 探测指定基址的 /api/health，用于首页展示「是否连对后端」。
+ * 探测后端健康检查（与 apps/backend/src/index.js 中 app.get("/health") 与 app.get("/api/health") 对齐）。
+ * 基址为同源代理前缀时（如 /api/remote），Next rewrite 会把 /api/remote/health 转到后端根路径 /health。
+ * 优先 /health，避免部分网关对 /api/remote/api/health 的双层 /api 解析异常；404 时再试 /api/health。
  */
 export async function probeApiHealth(baseUrl: string, timeoutMs = 4000): Promise<BackendHealthProbe> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  const healthUrl = `${baseUrl}/api/health`;
-  try {
-    const res = await fetch(healthUrl, {
-      signal: controller.signal,
-      mode: "cors",
-      credentials: "omit",
-      headers: {
-        ...getAccessCodeHeaders()
-      }
-    });
-    clearTimeout(timer);
-    const data = (await res.json().catch(() => ({}))) as { service?: string; status?: string };
-    return {
-      url: baseUrl,
-      ok: res.ok,
-      status: res.status,
-      service: typeof data.service === "string" ? data.service : undefined,
-      error: res.ok ? undefined : `HTTP ${res.status}`
-    };
-  } catch (e) {
-    clearTimeout(timer);
-    const name = e instanceof Error ? e.name : "";
-    return {
-      url: baseUrl,
-      ok: false,
-      error: name === "AbortError" ? "请求超时" : "无法连接"
-    };
+  const base = baseUrl.replace(/\/$/, "");
+  const paths = ["/health", "/api/health"];
+  let last: BackendHealthProbe = {
+    url: baseUrl,
+    ok: false,
+    error: "无法连接"
+  };
+
+  for (const path of paths) {
+    const healthUrl = `${base}${path}`;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(healthUrl, {
+        signal: controller.signal,
+        mode: "cors",
+        credentials: "omit",
+        headers: {
+          ...getAccessCodeHeaders()
+        }
+      });
+      clearTimeout(timer);
+      const data = (await res.json().catch(() => ({}))) as { service?: string; status?: string };
+      const probe: BackendHealthProbe = {
+        url: baseUrl,
+        ok: res.ok,
+        status: res.status,
+        service: typeof data.service === "string" ? data.service : undefined,
+        error: res.ok ? undefined : `HTTP ${res.status}`
+      };
+      if (res.ok) return probe;
+      last = probe;
+      if (res.status !== 404) return probe;
+    } catch (e) {
+      clearTimeout(timer);
+      const name = e instanceof Error ? e.name : "";
+      last = {
+        url: baseUrl,
+        ok: false,
+        error: name === "AbortError" ? "请求超时" : "无法连接"
+      };
+    }
   }
+
+  return last;
 }
 
 type RequestOptions = RequestInit & {
